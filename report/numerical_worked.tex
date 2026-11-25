@@ -81,8 +81,11 @@ $\bm p=-\bm g/\|\bm g\|_2$ with the same $[0,1]$ interval, width and cap.
 Here $\alpha$ has units of metres. This removes the huge scale of the raw
 gradient direction and produces a useful path, but at iteration 200 the
 run is still above tolerance, with $\|\bm g\|_2\approx18.57$ N. It is
-reported as capped, not converged. The finer, extended runs are parameter
-sensitivity cases and are not substituted for the prescribed baseline.
+reported as capped. Keeping the raw direction and midpoint return,
+reducing the width to $10^{-13}$, and raising the cap to 400 gives
+$(0.2506666752,0.0050878994)$ m after 367 updates, with a gradient norm
+of $1.67\times10^{-6}$ N. This sensitivity run gives a converged
+solution for comparison with the prescribed baseline.
 
 \paragraph{Newton, part (e).}
 At the initial point, $H_{11}>0$ and

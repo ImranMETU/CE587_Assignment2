@@ -172,6 +172,128 @@ summary.getRange("G4:G14").setNumberFormat("0.000E+00");
 summary.getRange("K4:K14").setNumberFormat("0.000E+00");
 addAnalyticalDerivation(book);
 addNumericalDerivation(book);
+
+function addDirectRun(name, method, normalized=false, gradientNewton=false, rounds=14, cap=200) {
+  const sheet = book.worksheets.add(name);
+  sheet.getRange("A1").values = [["Direct objective evaluations in worksheet formulas"]];
+  sheet.getRange("A2").values = [["Each row starts from the previous Excel iterate. Near equal energies can give different decisions from Python."]];
+  sheet.getRange("A4:S4").values = [[
+    "k","x1 (m)","x2 (m)","Energy (J)","Gradient (N)","Lambda","Alpha","Outcome","f calls",
+    "g1","g2","H11","H22","H12","p1","p2","delta 1","delta 2","Trial energy"
+  ]];
+  const gradientTest = method !== "Newton" || gradientNewton;
+  const search = method !== "Marquardt";
+  const f = (x,y) => a+"*("+x+")^2+"+b+"*("+y+")^2-"+q1+"*("+x+")-"+q2+"*("+y+")";
+  if (search) sheet.getRange("T4:"+column(20+rounds)+"4").values =
+    [Array.from({length:rounds+1},(_,i)=>"Midpoint "+i)];
+  const rows = [];
+  for (let k=0;k<=cap;k++) {
+    const r=k+5, p=r-1, x="B"+r, y="C"+r, dx="Q"+r, dy="R"+r;
+    const field = c=>c+r;
+    const active = expr=>'=IF(A'+r+'="","",'+expr+')';
+    const safe = "AND(ABS("+x+")<1E145,ABS("+y+")<1E145)";
+    const finite = expr=>active("IF("+safe+","+expr+",0)");
+    const xp=f(x+"+"+dx,y), xm=f(x+"-"+dx,y), yp=f(x,y+"+"+dy), ym=f(x,y+"-"+dy);
+    const lambda = method==="Marquardt" ? "+F"+r : "";
+    const h1=field("L")+lambda, h2=field("M")+lambda, mixed=field("N");
+    const det="(("+h1+")*("+h2+")-"+mixed+"^2)";
+    const norm = "SQRT(J"+r+"^2+K"+r+"^2)";
+    const stepNorm="SQRT(O"+r+"^2+P"+r+"^2)";
+    const tol="Inputs!$B$12";
+    const oldNorm="SQRT(B"+p+"^2+C"+p+"^2)";
+    const relative=k===0?"FALSE":
+      "SQRT((B"+r+"-B"+p+")^2+(C"+r+"-C"+p+")^2)<"+tol+"*IF("+oldNorm+"=0,1,"+oldNorm+")";
+    const stopTest=gradientTest ? "E"+r+"<="+tol : "OR("+stepNorm+"<"+tol+","+relative+")";
+    const status='IF('+safe+',IF('+stopTest+',"'+(gradientTest?'Gradient test':'Step test')+
+      '",IF(A'+r+'>='+cap+',"Cap","Running")),"Diverged")';
+    const running = expr=>active('IF(H'+r+'="Running",'+expr+',0)');
+    const data=[
+      k===0?"=0":'=IF(H'+p+'="Running",A'+p+'+1,"")',
+      active(k===0?"Inputs!$B$9":"B"+p+"+G"+p+"*O"+p),
+      active(k===0?"Inputs!$B$10":"C"+p+"+G"+p+"*P"+p),
+      active('IF('+safe+','+f(x,y)+',"Nonfinite guard")'),finite(norm),
+      active(method!=="Marquardt"?"0":k===0?"Inputs!$G$6":
+        "IF(G"+p+"=1,F"+p+"/Inputs!$B$14,F"+p+"*Inputs!$B$14)"),
+      running(search?column(20+rounds)+r:"IF(S"+r+"<D"+r+",1,0)"),
+      active(status),
+      active("IF("+safe+","+(method==="SD"?5:9)+'+IF(H'+r+'="Running",'+(search?3*rounds:1)+',0),0)'),
+      finite("("+xp+"-("+xm+"))/(2*"+dx+")"),
+      finite("("+yp+"-("+ym+"))/(2*"+dy+")"),
+      finite(method==="SD"?"0":"("+xp+"-2*D"+r+"+("+xm+"))/"+dx+"^2"),
+      finite(method==="SD"?"0":"("+yp+"-2*D"+r+"+("+ym+"))/"+dy+"^2"),
+      finite(method==="SD"?"0":"("+f(x+"+"+dx,y+"+"+dy)+"-("+f(x+"+"+dx,y+"-"+dy)+")-("+
+        f(x+"-"+dx,y+"+"+dy)+")+("+f(x+"-"+dx,y+"-"+dy)+"))/(4*"+dx+"*"+dy+")"),
+      finite(method==="SD"?"-J"+r+(normalized?"/IF(E"+r+"=0,1,E"+r+")":""):
+        "("+mixed+"*K"+r+"-("+h2+")*J"+r+")/"+det),
+      finite(method==="SD"?"-K"+r+(normalized?"/IF(E"+r+"=0,1,E"+r+")":""):
+        "("+mixed+"*J"+r+"-("+h1+")*K"+r+")/"+det),
+      active("Inputs!$B$11*IF("+x+"=0,1,"+x+")"),
+      active("Inputs!$B$11*IF("+y+"=0,1,"+y+")"),
+      method==="Marquardt"?running(f(x+"+O"+r,y+"+P"+r)):active("0"),
+    ];
+    if (search) {
+      data.push(running("0.5"));
+      const trial = alpha => f(x+"+("+alpha+")*O"+r,y+"+("+alpha+")*P"+r);
+      for (let i=1;i<=rounds;i++) {
+        const m=column(19+i)+r, q="2^(-"+(i+1)+")";
+        data.push(running("IF("+trial(m+"-"+q)+"<"+trial(m)+","+m+"-"+q+
+          ",IF("+trial(m+"+"+q)+"<"+trial(m)+","+m+"+"+q+","+m+"))"));
+      }
+    }
+    rows.push(data);
+  }
+  const last=5+cap;
+  const end=search?column(20+rounds):"S";
+  sheet.getRange("A5:"+end+last).formulas=rows;
+  heading(sheet,"A4:"+end+"4");
+  widths(sheet,"A:A",6);
+  widths(sheet,"B:"+end,16);
+  sheet.getRange("B5:C"+last).setNumberFormat("0.000000000");
+  sheet.getRange("D5:D"+last).setNumberFormat("0.000000");
+  sheet.getRange("E5:G"+last).setNumberFormat("0.000E+00");
+  return last;
+}
+
+const directCases = [
+  ["Direct SD raw","Literal SD baseline","SD"],
+  ["Direct SD scaled","Literal SD normalized","SD",true],
+  ["Direct SD extended","Literal SD extended midpoint","SD",false,false,44,400],
+  ["Direct Newton lecture","Literal Newton baseline","Newton"],
+  ["Direct Newton gradient","Literal Newton gradient","Newton",false,true],
+  ["Direct Marquardt","Literal Marquardt baseline","Marquardt"],
+];
+const directSummary = book.worksheets.add("Direct comparison");
+directSummary.getRange("A1").values = [["Direct Excel and Python runs"]];
+directSummary.getRange("A2").values = [["Excel recalculates each path from the inputs. Floating-point ties can change the path and stopping state."]];
+directSummary.getRange("A4:L4").values = [[
+  "Run","Excel k","Excel outcome","Excel x1 (m)","Excel x2 (m)","Excel norm (N)","Excel f calls",
+  "Python k","Python outcome","Python norm (N)","Python f calls","Position gap (m)",
+]];
+heading(directSummary,"A4:L4");
+widths(directSummary,"A:A",26);
+widths(directSummary,"B:L",17);
+for (const [i,[name,pythonName,...options]] of directCases.entries()) {
+  const last=addDirectRun(name,...options);
+  const r=i+5, ref="'"+name+"'!";
+  const get=(c)=>"INDEX("+ref+c+"5:"+c+last+",B"+r+"+1)";
+  const trace=csv.slice(1).map(line=>line.split(",")).filter(row=>row[0]===pythonName);
+  const tail=trace.at(-1);
+  directSummary.getRange("A"+r).values=[[name]];
+  directSummary.getRange("B"+r+":G"+r).formulas=[[
+    "=COUNT("+ref+"A5:A"+last+")-1","="+get("H"),"="+get("B"),"="+get("C"),
+    '=IF(C'+r+'="Diverged","",'+get("E")+")","=SUM("+ref+"I5:I"+last+")",
+  ]];
+  directSummary.getRange("H"+r+":K"+r).values=[[
+    Number(tail[1]),tail.at(-1),Number.isFinite(Number(tail[5]))?Number(tail[5]):null,
+    trace.reduce((sum,row)=>sum+Number(row[8]),0),
+  ]];
+  if(tail.at(-1)!=="diverged") directSummary.getRange("L"+r).formulas=[[
+    '=IF(C'+r+'="Diverged","",SQRT((D'+r+'-('+tail[2]+'))^2+(E'+r+'-('+tail[3]+'))^2))'
+  ]];
+}
+directSummary.getRange("D5:E10").setNumberFormat("0.000000000");
+for(const c of ["F","J","L"]) directSummary.getRange(c+"5:"+c+"10").setNumberFormat("0.000E+00");
+
 book.recalculate();
 const output = await SpreadsheetFile.exportXlsx(book);
 await output.save(path.join(root,"CE587_HW2_Validation.xlsx"));

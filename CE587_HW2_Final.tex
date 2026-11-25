@@ -241,7 +241,7 @@ SD and Marquardt gradient tolerance (N) & $10^{-5}$ & $10^{-2}$\\
 Newton step (m) and relative tolerance & $10^{-5}$ &\\
 Relative stencil factor & $0.01$ & $10^{-4}$\\
 Line-search interval & $[0,1]$ & \\
-Line-search width & $10^{-4}$ & $10^{-8}$, $10^{-13}$\\
+Line-search width & $10^{-4}$ & Newton: $10^{-8}$; SD: $10^{-13}$\\
 Initial damping (N/m) & $10^3$ & $10^5$\\
 Damping update & halve/double & factor 10\\
 \bottomrule
@@ -254,7 +254,7 @@ Damping update & halve/double & factor 10\\
 
 \clearpage
 \section{Convergence and parameter sensitivity}
-\subsection{Baseline comparison (part g)}
+\subsection{Baseline and common target comparison (part g)}
 The headline results below use direct objective evaluations, the final
 interval midpoint, the stated $[0,1]$ search range, and the lecture-note
 Marquardt update. The normalized steepest-descent result is shown separately
@@ -273,12 +273,15 @@ path is shown with the visible portion of the first unscaled update.}
 \small
 \begin{tabular}{lrrrrl}
 \toprule
-Method & Iterations / trials & $x_1$ (m) & $x_2$ (m) & $f$ (J) & Termination\\
+Run & Updates/trials & $f$ calls & $x_1$ (m) & $x_2$ (m) & Outcome\\
 \midrule
-SD, raw $-\bm g$ & 103 & -- & -- & Nonfinite & Diverged\\
-SD, normalized & 200 & 0.250666675 & 0.005106797 & $-1098.138116$ & Cap\\
-Newton & 1 & 0.250662077 & 0.005088049 & $-1098.138291$ & Step test\\
-Marquardt & 8 & 0.250666675 & 0.005087899 & $-1098.138292$ & Gradient test\\
+Analytical minimum & -- & -- & 0.250666675 & 0.005087899 & Exact\\
+SD, raw $-\bm g$ & 103 & 4846 & -- & -- & Diverged\\
+SD, normalized & 200 & 9405 & 0.250666675 & 0.005106797 & Cap\\
+SD, finer and extended & 367 & 50284 & 0.250666675 & 0.005087899 & Gradient test\\
+Newton, lecture & 1 & 60 & 0.250662077 & 0.005088049 & Step test\\
+Newton, common target & 6 & 315 & 0.250666675 & 0.005087899 & Gradient test\\
+Marquardt & 8 & 89 & 0.250666675 & 0.005087899 & Gradient test\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -286,10 +289,13 @@ The unnormalized steepest-descent result is not a solution: the returned
 midpoint repeatedly produces uphill steps and eventually overflow. The
 normalized direction approaches the analytical minimum and reaches the cap
 with a residual of $18.57$ N.
-Newton meets its lecture step criterion after one update. Marquardt
-meets its gradient criterion after five accepted steps and three rejected
-unit trials. The table reports iteration counts for steepest descent and
-Newton, and all accepted and rejected unit trials for Marquardt.
+The analytical minimum energy is $-1098.138292$ J. The counts include the objective and stencil samples at each state,
+the line-search or damping trials, and the terminal check. Marquardt's
+eight trials include three rejections. At the common $10^{-5}$ N target,
+the final gradient norms for extended SD, Newton and Marquardt are
+$1.67\times10^{-6}$, $6.20\times10^{-6}$ and $7.72\times10^{-7}$ N,
+respectively. Extended SD uses a width of $10^{-13}$ and a cap of 400.
+The Newton lecture run stops at $0.217$ N.
 
 \clearpage
 \subsection{Parameter sensitivity (part h)}
@@ -335,14 +341,25 @@ appropriate main comparison when following the stated numerical procedure.
 \paragraph{Marquardt's method.}
 With the lecture's halve/double damping update, the direct implementation
 converges in eight trials, including three rejections near the minimum.
-The damping reduces the step initially and then allows Newton-like progress.
+At the first rejection the quadratic predicts a decrease of about
+$4.24\times10^{-14}$ J, below the $2.27\times10^{-13}$ J spacing of
+floating-point energies there. The strict energy comparison is sensitive
+to rounding at that scale, so the rejection count depends on evaluation order.
 
 \paragraph{Method selected.}
 Newton is preferred when the lecture step tolerance is the goal. For a
-$10^{-5}$ N gradient target, the direct Newton diagnostic takes six updates
-and Marquardt takes five accepted steps in eight trials. Both reach the
-neighborhood of the analytical minimum. Their iteration counts alone do
-not establish a runtime ranking.
+$10^{-5}$ N gradient target, Marquardt used the fewest objective evaluations
+in this experiment, with 89 versus 315 for Newton. The different arithmetic
+and linear solve costs limit what these counts say about elapsed time.
+
+\paragraph{Direct worksheet comparison.}
+In the saved workbook, Newton meets the common gradient target in eight
+updates. Marquardt reaches the 200-trial cap at $5.41\times10^{-5}$ N,
+and extended SD reaches the 400-update cap at $1.04\times10^{-3}$ N.
+Their final coordinates differ from their Python counterparts by less
+than $1.6\times10^{-9}$ m. The workbook shows these outcomes alongside
+the Python results. The raw SD worksheet stops at a magnitude guard
+before the objective can overflow.
 
 \clearpage\section{Appendix A: Stabilized verification runs}\label{app:stable}
 The following results are an algebraically stabilized cross-check. They are not the literal numerical-method results used in parts (d)--(g).
@@ -350,13 +367,15 @@ The following results are an algebraically stabilized cross-check. They are not 
 fixed and varied the energy comparison and final candidate policy separately.
 Both raw objective values and stabilized comparisons gave one update with
 the best of the final endpoints and midpoint. Returning the midpoint gave
-two updates with stabilized comparisons and seven with raw values. Thus both
-the endpoint policy and rounding can affect the trace near equilibrium.
+two updates with stabilized comparisons and seven with raw values, both
+using a stabilized stencil and a gradient stopping test. Using direct
+central differences and direct comparisons gives six updates under the
+same gradient test.
 
 \paragraph{Direct objective evaluation.} Additional Python runs compute the
 central differences from raw objective values, including the four-point
 mixed stencil, and compare raw objective values in the line search or
-Marquardt acceptance test. The literal baseline result is reported in part (d); these are separate stabilized checks.
+Marquardt acceptance test. These runs check the effect of changing the numerical arithmetic and candidate policy.
 Table~\ref{tab:arithmetic} records the sensitivity of the stabilized reference
 results to direct floating-point evaluation and candidate policy. In particular, the
 direct Marquardt run with a factor of two rejects three trials whose computed
@@ -374,7 +393,7 @@ Case & Stabilized & Direct\\
 \midrule
 Steepest descent, extended & 290 & 275\\
 Newton, best final candidate & 1 & 1\\
-Newton, final midpoint & 2 & 6\\
+Newton, final midpoint (gradient test) & 2 & 6\\
 Marquardt, damping factor 2 & 5 & 8\\
 \bottomrule
 \end{tabular}
@@ -401,7 +420,7 @@ $(\|e_{290}\|_H/\|e_{100}\|_H)^{1/190}=0.9317$.
 \begin{figure}[H]
 \centering
 \includegraphics[width=.86\textwidth]{sensitivity.pdf}
-\caption{Sensitivity iterates in the assigned plotting window.}
+\caption{Direct sensitivity iterates in the assigned plotting window.}
 \end{figure}
 \begin{figure}[H]
 \centering
@@ -444,8 +463,8 @@ are available in the CSV and workbook.
 The handout supplies the input data; the files below retain the calculations and code used for the results.
 \begin{itemize}
  \item \texttt{solve\_hw2.py} computes the numerical runs and plots; \texttt{python\_iterations.csv} records every Python state and termination reason.
- \item \texttt{CE587\_HW2\_Validation.xlsx} contains formula-based geometry, the analytical minimum, finite-difference stencil, and stabilized iteration traces.
- \item \texttt{verify\_workbook.py} compares saved Excel values with Python and writes a row-by-row summary CSV.
+ \item \texttt{CE587\_HW2\_Validation.xlsx} contains formula-based geometry, the analytical minimum, finite-difference stencil, and direct and stabilized worksheet traces.
+ \item \texttt{verify\_workbook.py} compares saved Excel values with Python and writes a summary CSV for the stabilized traces.
 \end{itemize}
 \input{report/verification.tex}
 \end{document}

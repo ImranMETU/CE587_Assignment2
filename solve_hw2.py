@@ -282,6 +282,8 @@ def main():
         "Marquardt",1e-4,1000,factor=2,comparison="raw",selection="midpoint",stencil="raw")
     direct = dict(comparison="raw", selection="midpoint", stencil="raw")
     runs["Literal SD tighter"] = solve("SD", 1e-13, 1000, **direct)
+    runs["Literal SD extended midpoint"] = solve("SD", 1e-13, 1000, cap=400, **direct)
+    runs["Literal Newton gradient"] = solve("Newton", 1e-4, 1000, **direct)
     runs["Literal Newton tighter"] = solve(
         "Newton", 1e-8, 1000, newton_step_test=True, **direct)
     runs["Literal Marquardt factor 10"] = solve(
@@ -307,7 +309,7 @@ def main():
             writer.writerows(dict(case=name, **row) for row in rows)
             print(name, rows[-1], sum(row["evaluations"] for row in rows))
     baseline_paths = ["Literal SD baseline", "Literal SD normalized", "Literal Newton baseline", "Literal Marquardt baseline"]
-    sensitivity_paths = ["SD tighter", "Newton tighter", "Marquardt larger", "SD extended"]
+    sensitivity_paths = ["Literal SD extended midpoint", "Literal Newton tighter", "Literal Marquardt larger"]
     for label, names, window in [
         ("design_space", [], (0,1,0,.1)),
         ("baseline", baseline_paths, (0,1,0,.1)),
