@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from solve_hw2 import A, B, CASES, Q1, Q2, OPT, ROOT, derivatives, energy, numerical_derivation, solve
 
@@ -92,8 +93,10 @@ class HomeworkChecks(unittest.TestCase):
         self.assertLessEqual(extended[-1]["gradient"], 1e-5)
 
     def test_literal_midpoint_runs_and_divergence_status(self):
-        sd = solve("SD", 1e-4, 1000, comparison="raw", selection="midpoint",
-                   stencil="raw")
+        with patch("solve_hw2.energy", wraps=energy) as measured:
+            sd = solve("SD", 1e-4, 1000, comparison="raw", selection="midpoint",
+                       stencil="raw")
+        self.assertEqual(measured.call_count, sum(row["evaluations"] for row in sd))
         self.assertEqual((sd[-1]["k"], sd[-1]["status"]), (103, "diverged"))
         self.assertFalse(math.isfinite(sd[-1]["gradient"]))
         normalized = solve("SD", 1e-4, 1000, comparison="raw",

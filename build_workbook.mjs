@@ -7,6 +7,7 @@ import { addNumericalDerivation } from "./numerical_derivation.mjs";
 const { Workbook, SpreadsheetFile } = await import(pathToFileURL(process.argv[2]).href);
 const root = path.dirname(fileURLToPath(import.meta.url));
 const book = Workbook.create();
+const directSummary = book.worksheets.add("Direct comparison");
 const summary = book.worksheets.add("Results");
 const inputs = book.worksheets.add("Inputs");
 const cases = [
@@ -250,6 +251,7 @@ function addDirectRun(name, method, normalized=false, gradientNewton=false, roun
   widths(sheet,"B:"+end,16);
   sheet.getRange("B5:C"+last).setNumberFormat("0.000000000");
   sheet.getRange("D5:D"+last).setNumberFormat("0.000000");
+  if (name === "Direct SD raw") sheet.getRange("B5:E"+last).setNumberFormat("0.000E+00");
   sheet.getRange("E5:G"+last).setNumberFormat("0.000E+00");
   return last;
 }
@@ -262,7 +264,6 @@ const directCases = [
   ["Direct Newton gradient","Literal Newton gradient","Newton",false,true],
   ["Direct Marquardt","Literal Marquardt baseline","Marquardt"],
 ];
-const directSummary = book.worksheets.add("Direct comparison");
 directSummary.getRange("A1").values = [["Direct Excel and Python runs"]];
 directSummary.getRange("A2").values = [["Excel recalculates each path from the inputs. Floating-point ties can change the path and stopping state."]];
 directSummary.getRange("A4:L4").values = [[
@@ -292,6 +293,9 @@ for (const [i,[name,pythonName,...options]] of directCases.entries()) {
   ]];
 }
 directSummary.getRange("D5:E10").setNumberFormat("0.000000000");
+directSummary.getRange("D5:E5").setNumberFormat("0.000E+00");
+directSummary.getRange("A12").values = [["Inputs contains the model parameters. Analytical derivation and Numerical derivation show the hand calculations."]];
+directSummary.getRange("A13").values = [["Results summarizes the stabilized runs in Appendix A. The Direct sheets calculate the report methods."]];
 for(const c of ["F","J","L"]) directSummary.getRange(c+"5:"+c+"10").setNumberFormat("0.000E+00");
 
 book.recalculate();

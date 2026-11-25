@@ -1,4 +1,10 @@
-"""CE587 HW2. Run from any directory with NumPy and Matplotlib installed."""
+"""CE587 Homework 2: minimize the potential energy of a two-bar truss.
+
+Run python solve_hw2.py with NumPy and Matplotlib installed. The script
+writes python_iterations.csv and the six report figures beside this file.
+The cases named Literal use direct objective evaluations. The stabilized
+cases reproduce the verification calculations in Appendix A.
+"""
 import csv
 import math
 from dataclasses import dataclass
@@ -201,10 +207,10 @@ def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
             while hi-lo >= width:
                 mid = (lo+hi)/2
                 left, right = (lo+mid)/2, (mid+hi)/2
-                middle_score = score(mid)
-                if score(left) < middle_score:
+                left_score, middle_score, right_score = score(left), score(mid), score(right)
+                if left_score < middle_score:
                     hi = mid
-                elif score(right) < middle_score:
+                elif right_score < middle_score:
                     lo = mid
                 else:
                     lo, hi = left, right
