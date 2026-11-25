@@ -163,7 +163,7 @@ the central stencils are
  H_{ii}=\frac{D_i^++D_i^-}{\delta_i^2}.
 \]
 The main runs evaluate $f$ at each stencil point and compute the mixed
-entry from the four corner values. The mixed entry is zero in exact arithmetic. When a coordinate
+entry from the four corner values. The mixed entry is zero in exact arithmetic. At each Newton iterate, test positive definiteness using $H_{11}>0$ and $\det H>0$, then verify $\bm g^T\bm p<0$ before the line search. If the Hessian is not positive definite and the computed direction is not downhill, the notes require a restart from a different initial point. The baseline checks pass. When a coordinate
 is exactly zero, its relative stencil vanishes. In that case a 1 m reference
 scale supplies the nonzero perturbation $\delta_i=0.01$ m at the baseline
 stencil factor. At the initial
@@ -273,7 +273,7 @@ path is shown with the visible portion of the first unscaled update.}
 \small
 \begin{tabular}{lrrrrl}
 \toprule
-Method & Trials & $x_1$ (m) & $x_2$ (m) & $f$ (J) & Termination\\
+Method & Iterations / trials & $x_1$ (m) & $x_2$ (m) & $f$ (J) & Termination\\
 \midrule
 SD, raw $-\bm g$ & 103 & -- & -- & Nonfinite & Diverged\\
 SD, normalized & 200 & 0.250666675 & 0.005106797 & $-1098.138116$ & Cap\\
@@ -286,9 +286,10 @@ The unnormalized steepest-descent result is not a solution: the returned
 midpoint repeatedly produces uphill steps and eventually overflow. The
 normalized direction approaches the analytical minimum and reaches the cap
 with a residual of $18.57$ N.
-Newton meets its step criterion. Marquardt meets its gradient criterion after five accepted steps and three rejected trials. Objective-sample
-counts are omitted from the headline comparison because their totals depend
-on counting conventions and Marquardt does not use an interval line search.
+Newton meets its lecture step criterion after one update. Marquardt
+meets its gradient criterion after five accepted steps and three rejected
+unit trials. The table reports iteration counts for steepest descent and
+Newton, and all accepted and rejected unit trials for Marquardt.
 
 \clearpage
 \subsection{Parameter sensitivity (part h)}
@@ -385,9 +386,10 @@ Marquardt, damping factor 2 & 5 & 8\\
 The following runs use stabilized arithmetic and the best final candidate. With the tighter search, steepest descent reaches
 $(0.2506665666,0.0050879030)$ m at iteration 200, about $1.09\times10^{-7}$ m
 from the solution. The gradient remains above the stopping threshold. Newton
-still needs one update, with more interval comparisons. Larger initial
-Marquardt damping makes the first update smaller and raises the iteration
-count from four to six.
+still needs one update, with more interval comparisons. Under the
+lecture halve/double rule, the stabilized Marquardt baseline takes five
+accepted updates. Raising the initial damping to $10^5$ N/m takes ten
+updates in this stabilized comparison.
 
 \paragraph{Steepest-descent rate.} The Hessian condition number is
 $\kappa=b/a=28.44$. For a positive-definite quadratic with exact line
@@ -419,7 +421,7 @@ Reference run & Setting changed & Updates & Final gradient (N)\\
 SD tighter & Cap 400 & 290 & $8.81\times10^{-6}$\\
 SD extended & Start $(0,0.01)$ m & 220 & $8.65\times10^{-6}$\\
 Newton baseline & Stencil factor $10^{-4}$ & 1 & $1.42\times10^{-8}$\\
-Marquardt stabilized reference & Damping factor 2 & 5 & $9.77\times10^{-8}$\\
+Marquardt baseline & Damping factor 10 & 4 & $3.54\times10^{-9}$\\
 SD tighter & Gradient tolerance $10^{-2}$ N & 192 & $9.01\times10^{-3}$\\
 \bottomrule
 \end{tabular}
@@ -428,8 +430,9 @@ The changed starting point changes the mixture of directional errors and
 the subsequent steepest-descent path. A looser gradient tolerance saves
 updates at the expense of equilibrium accuracy. Central differences are
 exact for this quadratic in exact arithmetic, so the smaller stencil changes
-the Newton residual through rounding. The factor of two decreases damping
-more slowly after acceptance, adding one update in the stabilized run.
+the Newton residual through rounding. A factor of ten reduces damping more
+quickly after acceptance and takes four stabilized updates here, compared
+with five using the class-note factor of two.
 
 \subsection{Stabilized iteration checkpoints}
 \input{report/checkpoints.tex}
@@ -438,15 +441,11 @@ are available in the CSV and workbook.
 
 
 \section{Calculation files and reproducibility}
-The handout for CE587 Homework 2, Fall 2026--2027 supplies the geometry,
-load, material properties, baseline numerical parameters and plotting window.
+The handout supplies the input data; the files below retain the calculations and code used for the results.
 \begin{itemize}
- \item \texttt{solve\_hw2.py} generates the iteration CSV and six vector plots.
- \item \texttt{CE587\_HW2\_Validation.xlsx} computes the geometry, exact
- minimum, finite differences and eleven runs using worksheet formulas.
- Its Results sheet compares its final coordinates with the Python output.
- \item \texttt{python\_iterations.csv} records the Python states and termination
- reasons, including the Python-only direct objective and Newton line-search checks.
+ \item \texttt{solve\_hw2.py} computes the numerical runs and plots; \texttt{python\_iterations.csv} records every Python state and termination reason.
+ \item \texttt{CE587\_HW2\_Validation.xlsx} contains formula-based geometry, the analytical minimum, finite-difference stencil, and stabilized iteration traces.
+ \item \texttt{verify\_workbook.py} compares saved Excel values with Python and writes a row-by-row summary CSV.
 \end{itemize}
 \input{report/verification.tex}
 \end{document}

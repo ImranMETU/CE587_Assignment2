@@ -46,10 +46,11 @@ H_{12}\approx
 \frac{f_{++}-f_{+-}-f_{-+}+f_{--}}{4\delta_1\delta_2}\approx0,
 \]
 where the signs indicate the two coordinate perturbations. The mixed
-derivative is exactly zero for this separable quadratic. Thus
-$\|\bm g^{(0)}\|_2=7099.159$ N and the diagonal Hessian supplies the
-curvatures for Newton and Marquardt. At every subsequent iterate, recompute
-the perturbations and the central differences using the current coordinates.
+derivative is exactly zero for this separable quadratic. Direct floating-point
+evaluation gives $H_{12}=-2.84\times10^{-7}$ N/m, which is negligible but is
+retained in the full $2\times2$ numerical solve. Thus
+$\|\bm g^{(0)}\|_2=7099.159$ N. At every subsequent iterate, recompute the
+perturbations and the central differences using the current coordinates.
 
 \clearpage
 \subsection{Worked steepest-descent and Newton updates}
@@ -84,7 +85,12 @@ reported as capped, not converged. The finer, extended runs are parameter
 sensitivity cases and are not substituted for the prescribed baseline.
 
 \paragraph{Newton, part (e).}
-Solving $H\bm p=-\bm g$ gives
+At the initial point, $H_{11}>0$ and
+$\det H=3.3952\times10^{10}\,(\mathrm{N/m})^2>0$, so the numerical
+Hessian is positive definite. The computed direction also passes the
+downhill check, $\bm g^T\bm p=-807.987$ J $<0$. These are the lecture-note
+checks before the line search. Solving the full $2\times2$ system
+$H\bm p=-\bm g$ gives
 \[
 p_1=\frac{5205.365577}{34548.8846}=0.1506666752\ \mathrm m,
 \qquad

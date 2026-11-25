@@ -17,14 +17,14 @@ const cases = [
   ["SD extended","SD",1e-13,1000,400],
   ["SD zero start","SD",1e-13,1000,400,0],
   ["Newton small stencil","Newton",1e-4,1000,200,.1,.01,1e-4],
-  ["Marquardt factor 2","Marquardt",1e-4,1000,200,.1,.01,.01,2],
+  ["Marquardt factor 10","Marquardt",1e-4,1000,200,.1,.01,.01,10],
   ["SD loose gradient","SD",1e-13,1000,200,.1,.01,.01,10,.01],
 ];
 const parameters = [
   ["E (Pa)",207e9], ["Area (m²)",1e-5], ["Span (m)",1.5], ["Height (m)",4],
   ["P (N)",1e4], ["Angle (deg)",30], ["Initial x1 (m)",.1], ["Initial x2 (m)",.01],
   ["Relative perturbation",.01], ["Gradient tolerance (N)",1e-5], ["Iteration cap",200],
-  ["Damping factor",10], ["Bar length (m)"], ["a (N/m)"], ["b (N/m)"],
+  ["Damping factor",2], ["Bar length (m)"], ["a (N/m)"], ["b (N/m)"],
   ["q1 (N)"], ["q2 (N)"], ["Analytical x1 (m)"], ["Analytical x2 (m)"], ["Minimum (J)"],
 ];
 inputs.getRange("A1").values = [["Source: CE587 Homework 2, Fall 2026–2027"]];
@@ -83,15 +83,25 @@ for (const [index,[name,method]] of cases.entries()) {
   for (let r=2;r<=lastRow;r++) {
     const prior=r-1;
     const active = formula => `=IF(A${r}="","",${formula})`;
-    const step = formula => active(`IF(OR(E${r}<=${tolerance},A${r}>=${cap}),0,${formula})`);
+    const newtonStatus = `IF(OR(SQRT(T${r}^2+U${r}^2)<${tolerance},IF(A${r}>0,IF(SQRT(B${prior}^2+C${prior}^2)=0,SQRT((B${r}-B${prior})^2+(C${r}-C${prior})^2)<${tolerance},SQRT((B${r}-B${prior})^2+(C${r}-C${prior})^2)/SQRT(B${prior}^2+C${prior}^2)<${tolerance}),FALSE)),"converged_step",IF(A${r}>=${cap},"cap","running"))`;
+    const ordinaryStatus = method === "Marquardt"
+      ? `IF(E${r}<=${tolerance},"converged",IF(A${r}>=${cap},"cap","running"))`
+      : `IF(E${r}<=${tolerance},"converged",IF(A${r}>=${cap},"cap",IF(G${r}=0,"stalled","running")))`;
+    const terminalStatus = method === "Newton" ? newtonStatus : ordinaryStatus;
+    const finished = method === "Newton"
+      ? `OR(H${r}="converged_step",H${r}="cap")`
+      : `OR(E${r}<=${tolerance},A${r}>=${cap})`;
+    const step = formula => active(`IF(${finished},0,${formula})`);
+    const direction = formula => active(formula);
     const x=`B${r}`,y=`C${r}`,dx=`J${r}`,dy=`K${r}`;
     const shift = search ? "" : `+F${r}`;
     const last = `INDEX(Z${r}:BR${r},1,Y${r}+1)`;
     const quarter = `2^(-Y${r}-1)`;
     const center = `X${r}`;
+    // For this positive-definite quadratic, every full damped-Newton step decreases f.
     const alpha = search
       ? `IF(${center}<=${last}-${quarter}/2,${last}-${quarter},IF(${center}>=${last}+${quarter}/2,${last}+${quarter},${last}))`
-      : `IF(V${r}+W${r}<0,1,0)`;
+      : `IF(AND(R${r}>0,S${r}>0),1,0)`;
     const data = [
       r===2?"=0":`=IF(H${prior}="running",A${prior}+1,"")`,
       active(r===2?setting("I",9):`B${prior}+G${prior}*T${prior}`),
@@ -101,18 +111,18 @@ for (const [index,[name,method]] of cases.entries()) {
       active(r===2 || search ? `Inputs!$G$${inputRow}` :
         `IF(G${prior}=1,F${prior}/${setting("L",14)},F${prior}*${setting("L",14)})`),
       step(alpha),
-      active(`IF(E${r}<=${tolerance},"converged",IF(A${r}>=${cap},"cap",${search?`IF(G${r}=0,"stalled","running")`:'"running"'}))`),
-      active(`${method==="SD"?4:9}+IF(OR(H${r}="cap",H${r}="converged"),0,${search?`3*Y${r}+3`:1})`),
+      active(terminalStatus),
+      active(`${method==="SD"?5:9}+IF(${finished},0,${search?`3*Y${r}+3`:1})`),
       active(`${setting("K",11)}*IF(${x}=0,1,${x})`),
       active(`${setting("K",11)}*IF(${y}=0,1,${y})`),
       active(`${dx}*(2*${a}*${x}-${q1}+${a}*${dx})`),
       active(`-${dx}*(2*${a}*${x}-${q1}-${a}*${dx})`),
       active(`${dy}*(2*${b}*${y}-${q2}+${b}*${dy})`),
       active(`-${dy}*(2*${b}*${y}-${q2}-${b}*${dy})`),
-      active(`(L${r}-M${r})/(2*${dx})`), active(`(N${r}-O${r})/(2*${dy})`),
-      active(`(L${r}+M${r})/${dx}^2`), active(`(N${r}+O${r})/${dy}^2`),
-      step(method==="SD"?`-P${r}`:`-P${r}/(R${r}${shift})`),
-      step(method==="SD"?`-Q${r}`:`-Q${r}/(S${r}${shift})`),
+      active(`2*${a}*${x}-${q1}`), active(`2*${b}*${y}-${q2}`),
+      active(`2*${a}`), active(`2*${b}`),
+      direction(method==="SD"?`-P${r}`:`-P${r}/(R${r}${shift})`),
+      direction(method==="SD"?`-Q${r}`:`-Q${r}/(S${r}${shift})`),
       step(`P${r}*T${r}+Q${r}*U${r}`),
       step(`${a}*T${r}^2+${b}*U${r}^2`),
       step(search?`-V${r}/(2*W${r})`:"0"),

@@ -23,10 +23,12 @@ class Case:
     cap: int = 200
     start: tuple[float, float] = (.1, .01)
     relative: float = .01
-    factor: float = 10.
+    factor: float = 2.
     tolerance: float = 1e-5
 
     def run(self, **options):
+        if self.method == "Newton":
+            options.setdefault("newton_step_test", True)
         return solve(self.method, self.width, self.damping, self.cap, self.start,
                      self.relative, self.factor, self.tolerance, **options)
 
@@ -41,7 +43,7 @@ CASES = [
     Case("SD extended", "SD", width=1e-13, cap=400),
     Case("SD zero start", "SD", width=1e-13, cap=400, start=(0., .01)),
     Case("Newton small stencil", "Newton", relative=1e-4),
-    Case("Marquardt factor 2", "Marquardt", factor=2),
+    Case("Marquardt factor 10", "Marquardt", factor=10),
     Case("SD loose gradient", "SD", width=1e-13, tolerance=.01),
 ]
 
@@ -117,7 +119,7 @@ def raw_derivatives(x, y, relative, value, need_hessian):
 
 
 def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
-          factor=10, tolerance=1e-5, comparison="stable", selection="best",
+          factor=2, tolerance=1e-5, comparison="stable", selection="best",
           stencil="stable", normalize_sd=False, newton_step_test=False):
     x, y = start
     rows = []
@@ -129,9 +131,12 @@ def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
             gx, gy, hxx, hyy = derivatives(x, y, relative)
             mixed = 0.
         norm = math.hypot(gx, gy)
+        determinant = hxx*hyy-mixed*mixed
+        hessian_positive_definite = method == "Newton" and hxx > 0 and determinant > 0
         row = dict(k=k, x=x, y=y, energy=value, gradient=norm,
-                   damping=damping, alpha=0., evaluations=4 if method == "SD" else 9,
-                   status="running")
+                   damping=damping, alpha=0., evaluations=5 if method == "SD" else 9,
+                   hessian_positive_definite=(hessian_positive_definite if method == "Newton" else None),
+                   directional_derivative=None, status="running")
         rows.append(row)
         if not all(map(math.isfinite, (x, y, value, norm))):
             row["status"] = "diverged"
@@ -139,7 +144,9 @@ def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
         if method == "Newton" and newton_step_test and k:
             previous = rows[-2]
             scale = math.hypot(previous["x"], previous["y"])
-            if scale and math.hypot(x-previous["x"], y-previous["y"])/scale < tolerance:
+            change = math.hypot(x-previous["x"], y-previous["y"])
+            relative_change = change/scale if scale > 0 else change
+            if relative_change < tolerance:
                 row["status"] = "converged_relative_change"
                 break
         gradient_met = norm <= tolerance and not (method == "Newton" and newton_step_test)
@@ -160,6 +167,12 @@ def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
             px = (mixed*gy-yy*gx)/determinant
             py = (mixed*gx-xx*gy)/determinant
 
+        if method == "Newton":
+            directional = gx*px+gy*py
+            row["directional_derivative"] = directional
+            if not directional < 0:
+                row["status"] = "restart_required"
+                break
         if method == "Newton" and newton_step_test and math.hypot(px, py) < tolerance:
             row["status"] = "converged_step"
             break
@@ -217,17 +230,29 @@ def numerical_derivation():
                (x+delta1,y+delta2),(x+delta1,y-delta2),
                (x-delta1,y+delta2),(x-delta1,y-delta2)]
     sd = (-gx,-gy)
-    newton = (-gx/h11,-gy/h22)
-    marquardt = (-gx/(h11+1000),-gy/(h22+1000))
-    # H12 is exactly zero for this separable objective.
+    determinant = h11*h22-h12*h12
+    newton = ((h12*gy-h22*gx)/determinant,
+              (h12*gx-h11*gy)/determinant)
+    damping_determinant = (h11+1000)*(h22+1000)-h12*h12
+    marquardt = ((h12*gy-(h22+1000)*gx)/damping_determinant,
+                 (h12*gx-(h11+1000)*gy)/damping_determinant)
+    halvings = math.floor(-math.log2(1e-4))+1
+    newton_alpha = 1-2**(-halvings-1)
     return {
         "stencil": [(u,v,energy(u,v)) for u,v in stencil],
         "gradient": (gx,gy), "hessian": (h11,h22,h12),
+        "hessian_determinant": determinant,
+        "hessian_positive_definite": h11 > 0 and determinant > 0,
         "SD direction": sd, "Newton direction": newton,
+        "Newton directional derivative": gx*newton[0]+gy*newton[1],
+        "Newton descent direction": gx*newton[0]+gy*newton[1] < 0,
+        "Newton alpha": newton_alpha,
         "Marquardt direction": marquardt,
         "SD final candidates": [(alpha,energy(x+alpha*sd[0],y+alpha*sd[1]))
                                 for alpha in (0.,2**-15,2**-14)],
-        "Newton updated point": (x+newton[0],y+newton[1]),
+        "SD final midpoint alpha": 2**-15,
+        "Newton updated point": (x+newton_alpha*newton[0],y+newton_alpha*newton[1]),
+        "Newton full-step point": (x+newton[0],y+newton[1]),
         "Marquardt trial point": (x+marquardt[0],y+marquardt[1]),
     }
 
@@ -270,7 +295,7 @@ def main():
             "Newton",1e-4,1000,comparison=comparison,selection=selection
         )
     by_name = {case.name: case for case in CASES}
-    for name in ("SD baseline", "SD extended", "Newton baseline", "Marquardt factor 2"):
+    for name in ("SD baseline", "SD extended", "Newton baseline", "Marquardt factor 10"):
         runs[f"{name} literal"] = by_name[name].run(comparison="raw",stencil="raw")
     runs["Newton midpoint literal"] = by_name["Newton baseline"].run(
         comparison="raw", selection="midpoint", stencil="raw"

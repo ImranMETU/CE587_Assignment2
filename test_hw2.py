@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-from solve_hw2 import A, B, CASES, Q1, Q2, OPT, ROOT, derivatives, energy, solve
+from solve_hw2 import A, B, CASES, Q1, Q2, OPT, ROOT, derivatives, energy, numerical_derivation, solve
 
 
 class HomeworkChecks(unittest.TestCase):
@@ -34,10 +34,10 @@ class HomeworkChecks(unittest.TestCase):
             self.assertAlmostEqual(hyy, 2*B, places=6)
 
     def test_baseline_regression(self):
-        for method, k, status in [("SD",0,"stalled"), ("Newton",1,"converged"),
-                                  ("Marquardt",4,"converged")]:
+        for method, k, status in [("SD",0,"stalled"), ("Newton",1,"converged_step"),
+                                  ("Marquardt",5,"converged")]:
             with self.subTest(method=method):
-                rows = solve(method,1e-4,1000)
+                rows = solve(method,1e-4,1000,newton_step_test=(method=="Newton"))
                 self.assertEqual((rows[-1]["k"],rows[-1]["status"]),(k,status))
                 if status == "converged":
                     self.assertLess(math.dist((rows[-1]["x"],rows[-1]["y"]),OPT),1e-9)
@@ -46,7 +46,7 @@ class HomeworkChecks(unittest.TestCase):
         capped = solve("SD",1e-13,1000)
         extended = solve("SD",1e-13,1000,400)
         self.assertEqual(capped, extended[:200]+[dict(extended[200],status="cap",
-                                                        alpha=0.,evaluations=4)])
+                                                        alpha=0.,evaluations=5)])
         self.assertEqual((extended[-1]["k"],extended[-1]["status"]),(290,"converged"))
         self.assertLessEqual(extended[-1]["gradient"],1e-5)
         self.assertLess(math.dist((extended[-1]["x"],extended[-1]["y"]),OPT),1e-9)
@@ -59,8 +59,8 @@ class HomeworkChecks(unittest.TestCase):
             self.assertAlmostEqual(gy, .02*B-Q2, places=7)
             self.assertTrue(math.isclose(hxx, 2*A, rel_tol=1e-10))
             self.assertTrue(math.isclose(hyy, 2*B, rel_tol=1e-10))
-        damped = cases["Marquardt factor 2"].run()
-        self.assertEqual(damped[1]["damping"], 500.)
+        damped = cases["Marquardt factor 10"].run()
+        self.assertEqual(damped[1]["damping"], 100.)
         loose = cases["SD loose gradient"].run()
         self.assertGreater(loose[-2]["gradient"], .01)
         self.assertLessEqual(loose[-1]["gradient"], .01)
@@ -72,6 +72,16 @@ class HomeworkChecks(unittest.TestCase):
         self.assertEqual(endpoint[0]["alpha"], 1.)
         self.assertEqual(midpoint[0]["alpha"], 1.-2**-15)
         self.assertGreater(midpoint[1]["gradient"], 1e-5)
+
+    def test_newton_curvature_and_descent_checks(self):
+        worked = numerical_derivation()
+        self.assertTrue(worked["hessian_positive_definite"])
+        self.assertTrue(worked["Newton descent direction"])
+        self.assertLess(worked["Newton directional derivative"], 0.)
+        rows = solve("Newton", 1e-4, 1000, comparison="raw",
+                     selection="midpoint", stencil="raw", newton_step_test=True)
+        self.assertTrue(rows[0]["hessian_positive_definite"])
+        self.assertLess(rows[0]["directional_derivative"], 0.)
 
     def test_literal_steepest_descent(self):
         cases = {case.name: case for case in CASES}

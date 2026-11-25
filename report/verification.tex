@@ -1,14 +1,1 @@
-\subsection{Python and Excel cross-check}
-The saved workbook and Python stabilized trace agree on all 931 recorded
-states across eleven verification runs. This is a consistency check between
-implementations that use the same stabilized formulas, not independent
-validation of the literal direct-evaluation runs in the main report.
-The comparison covers the two coordinates, energy, gradient norm, trial
-step, damping, sample count and termination status. The maximum observed
-coordinate difference is below $10^{-9}$ m, the maximum energy difference
-is below $10^{-6}$ J, and the maximum gradient-norm difference is below
-$10^{-9}$ N. The workbook and Python use the same stabilized arithmetic,
-so this checks agreement between implementations. The closed-form minimum
-and the direct objective runs provide separate checks on the result.
-The verifier \texttt{verify\_workbook.py} reads the saved Excel values and
-produces \texttt{excel\_python\_check.csv}.
+\small\noindent\textbf{Python--Excel consistency.} The 935 stabilized states match in count, status, damping and evaluation; steps differ by less than $10^{-10}$. Maximum coordinate, energy and gradient differences are $3.21\times10^{-8}$ m, $1.21\times10^{-4}$ J and $5.43\times10^{-3}$ N. Long SD traces amplify floating-point ties. Shared formulas make this a consistency check; the analytical and literal runs are separate checks.\normalsize

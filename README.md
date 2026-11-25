@@ -18,9 +18,10 @@ midpoint. It shows the unnormalized steepest-descent divergence and the
 normalized direction comparison, with direct Newton and lecture-rule
 Marquardt results. Stabilized results are retained as Appendix A and in the
 Excel verification workbook.
-The Excel **Numerical derivation** sheet includes direct objective evaluations
-for hand checking. The per-run Excel traces are the stabilized verification set,
-not an independent reproduction of the literal direct runs. Python's `numerical_derivation()`
+The Excel Numerical derivation sheet uses direct objective evaluations,
+returns the final interval midpoint, and shows Newton's Hessian and descent checks. The per-run traces use stabilized arithmetic as a verification set, not as an
+independent reproduction of the literal direct runs. The baseline Marquardt
+factor is 2, following the class notes. Python's `numerical_derivation()`
 returns the stencil values and worked steps for checking by hand.
 `numerical_derivation.mjs` supplies this sheet in the workbook builder.
 
