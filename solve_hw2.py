@@ -118,7 +118,7 @@ def raw_derivatives(x, y, relative, value, need_hessian):
 
 def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
           factor=10, tolerance=1e-5, comparison="stable", selection="best",
-          stencil="stable"):
+          stencil="stable", normalize_sd=False, newton_step_test=False):
     x, y = start
     rows = []
     for k in range(cap+1):
@@ -133,11 +133,23 @@ def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
                    damping=damping, alpha=0., evaluations=4 if method == "SD" else 9,
                    status="running")
         rows.append(row)
-        if norm <= tolerance or k == cap:
-            row["status"] = "converged" if norm <= tolerance else "cap"
+        if not all(map(math.isfinite, (x, y, value, norm))):
+            row["status"] = "diverged"
+            break
+        if method == "Newton" and newton_step_test and k:
+            previous = rows[-2]
+            scale = math.hypot(previous["x"], previous["y"])
+            if scale and math.hypot(x-previous["x"], y-previous["y"])/scale < tolerance:
+                row["status"] = "converged_relative_change"
+                break
+        gradient_met = norm <= tolerance and not (method == "Newton" and newton_step_test)
+        if gradient_met or k == cap:
+            row["status"] = "converged" if gradient_met else "cap"
             break
         if method == "SD":
             px, py = -gx, -gy
+            if normalize_sd and norm:
+                px, py = px/norm, py/norm
         elif stencil == "stable":
             shift = damping if method == "Marquardt" else 0
             px, py = -gx/(hxx+shift), -gy/(hyy+shift)
@@ -147,6 +159,10 @@ def solve(method, width, damping, cap=200, start=(.1,.01), relative=.01,
             determinant = xx*yy-mixed*mixed
             px = (mixed*gy-yy*gx)/determinant
             py = (mixed*gx-xx*gy)/determinant
+
+        if method == "Newton" and newton_step_test and math.hypot(px, py) < tolerance:
+            row["status"] = "converged_step"
+            break
 
         def raw_energy(alpha):
             return energy(x+alpha*px, y+alpha*py)
@@ -227,6 +243,26 @@ def main():
     figures = ROOT / "figures"
     figures.mkdir(exist_ok=True)
     runs = {case.name: case.run() for case in CASES}
+    # Literal homework procedure: direct f evaluations, final IHM midpoint,
+    # and the lecture-note halve/double Marquardt update.
+    runs["Literal SD baseline"] = solve(
+        "SD",1e-4,1000,comparison="raw",selection="midpoint",stencil="raw")
+    runs["Literal SD normalized"] = solve(
+        "SD",1e-4,1000,comparison="raw",selection="midpoint",stencil="raw",
+        normalize_sd=True)
+    runs["Literal Newton baseline"] = solve(
+        "Newton",1e-4,1000,factor=2,comparison="raw",selection="midpoint",stencil="raw",
+        newton_step_test=True)
+    runs["Literal Marquardt baseline"] = solve(
+        "Marquardt",1e-4,1000,factor=2,comparison="raw",selection="midpoint",stencil="raw")
+    direct = dict(comparison="raw", selection="midpoint", stencil="raw")
+    runs["Literal SD tighter"] = solve("SD", 1e-13, 1000, **direct)
+    runs["Literal Newton tighter"] = solve(
+        "Newton", 1e-8, 1000, newton_step_test=True, **direct)
+    runs["Literal Marquardt factor 10"] = solve(
+        "Marquardt", 1e-4, 1000, factor=10, **direct)
+    runs["Literal Marquardt larger"] = solve(
+        "Marquardt", 1e-4, 100000, factor=2, **direct)
     for comparison, selection in [
         ("stable", "midpoint"), ("raw", "best"), ("raw", "midpoint"),
     ]:
@@ -245,7 +281,7 @@ def main():
         for name, rows in runs.items():
             writer.writerows(dict(case=name, **row) for row in rows)
             print(name, rows[-1], sum(row["evaluations"] for row in rows))
-    baseline_paths = ["SD baseline", "Newton baseline", "Marquardt baseline"]
+    baseline_paths = ["Literal SD baseline", "Literal SD normalized", "Literal Newton baseline", "Literal Marquardt baseline"]
     sensitivity_paths = ["SD tighter", "Newton tighter", "Marquardt larger", "SD extended"]
     for label, names, window in [
         ("design_space", [], (0,1,0,.1)),
@@ -265,7 +301,7 @@ def main():
                               colors="#53677e",linewidths=.7)
         ax.clabel(contours,fmt="%g",fontsize=7)
         for name in names:
-            rows = runs[name]
+            rows = runs[name][:2] if name == "Literal SD baseline" else runs[name]
             ax.plot([r["x"] for r in rows],[r["y"] for r in rows],
                     "o-",markersize=3, markevery=max(1,len(rows)//16),label=name)
         if label != "graphical":

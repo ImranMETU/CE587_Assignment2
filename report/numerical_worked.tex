@@ -62,83 +62,26 @@ The direction and trial point are
 \bm x(\alpha)=
 \begin{bmatrix}0.1+5205.365577\alpha\\0.01-4827.238289\alpha\end{bmatrix}.
 \]
-For this implementation, interval halving evaluates the left quarter point,
-midpoint and right quarter point, keeps the half whose sampled energy is
-lower, and repeats until the interval width is less than $10^{-4}$. The
-objective along the direction is a convex quadratic. In exact arithmetic its
-minimizer is
-\begin{align*}
-\alpha_*&=-\frac{\bm g^T\bm p}{\bm p^T\bm H\bm p}
-=\frac{5205.365577^2+4827.238289^2}
-{34548.8846(5205.365577)^2+982723.8289(4827.238289)^2}\\
-&=2.1143863\times10^{-6}.
-\end{align*}
-Thus the energy decreases only for $0<\alpha<2\alpha_*=4.22877\times10^{-6}$;
-for larger positive steps it rises above its value at $\alpha=0$. This gives
-a quick independent check of the scale of step the search needs to find.
+The direct line search starts on $[0,1]$. At each round it evaluates the
+left quarter point, midpoint and right quarter point with the original
+objective, retains the half containing the lowest value, and returns the
+final interval midpoint once its width is below $10^{-4}$. The exact line
+minimum is $\alpha_*=2.1143863\times10^{-6}$, far smaller than the first
+returned midpoint. After 14 rounds the interval is
+$[0,6.10352\times10^{-5}]$ and the returned midpoint is
+$\alpha=3.05176\times10^{-5}$. Direct evaluation gives
+$f(\bm x^{(1)})\approx8867.23$ J, up from $-694.14$ J. The method therefore
+accepts an uphill step. Repeating the stated procedure leads to overflow;
+the first nonfinite state occurs at iteration 103, so this run diverges
+before the limit $M=200$.
 
-In the first search, the three samples are $0.25,0.5,0.75$. Their energies
-are $7.449\times10^{11}$, $2.979\times10^{12}$ and
-$6.704\times10^{12}$ J. The left quarter point has lower energy than the
-midpoint, so keep $[0,0.5]$. The same comparison repeats because the useful
-step is close to zero. The following table records every retained interval. In every round, the
-left-quarter sample has the lowest of the three tested energies, so the
-interval contracts toward zero. The final-candidate table below gives the
-actual energies at the selected stopping resolution.
-\begin{table}[H]
-\centering
-\caption{Interval-halving trace for the first steepest-descent search.}
-\begin{tabular}{rcl}
-\toprule
-Round&Interval tested&Interval retained\\
-\midrule
-1&$[0,1]$&$[0,0.5]$\\
-2&$[0,0.5]$&$[0,0.25]$\\
-3&$[0,0.25]$&$[0,0.125]$\\
-4&$[0,0.125]$&$[0,0.0625]$\\
-5&$[0,0.0625]$&$[0,0.03125]$\\
-6&$[0,0.03125]$&$[0,0.015625]$\\
-7&$[0,0.015625]$&$[0,0.0078125]$\\
-8&$[0,0.0078125]$&$[0,0.00390625]$\\
-9&$[0,0.00390625]$&$[0,0.001953125]$\\
-10&$[0,0.001953125]$&$[0,0.0009765625]$\\
-11&$[0,0.0009765625]$&$[0,0.00048828125]$\\
-12&$[0,0.00048828125]$&$[0,0.000244140625]$\\
-13&$[0,0.000244140625]$&$[0,0.0001220703125]$\\
-14&$[0,0.0001220703125]$&$[0,0.00006103515625]$\\
-\bottomrule
-\end{tabular}
-\end{table}
-The final interval width is $2^{-14}=6.10352\times10^{-5}<10^{-4}$, so the
-specified stopping condition is met. Our documented selection rule then
-compares the interval endpoints and midpoint. The midpoint and right endpoint
-are the two nonzero candidates in the next table; both have higher energy
-than zero. Therefore it selects $\alpha=0$. The point does not move, and its
-gradient remains $7099.159$ N, above the adopted $10^{-5}$ N stopping
-threshold. We call this a stall, rather than convergence.
-\begin{table}[H]
-\centering
-\caption{Final candidate comparison for the first steepest-descent search.}
-\begin{tabular}{rr}
-\toprule
-$\alpha$&$f(\bm x^{(0)}+\alpha\bm p)$ (J)\\
-\midrule
-0&$-694.144789$\\
-$2^{-15}=0.000030517578125$&$8867.231691$\\
-$2^{-14}=0.00006103515625$&$40627.414616$\\
-\bottomrule
-\end{tabular}
-\end{table}
-This does not mean that the steepest-descent direction has no improving
-step. The exact line minimum lowers the energy by about $53.28$ J, but lies
-far below the smallest positive candidate at the stated search resolution.
-The specified width tolerance is therefore too coarse for this unscaled
-search direction. With a finer interval tolerance, this implementation does
-find decreasing steps; the sensitivity results show that convergence is
-slow because successive steepest-descent steps zigzag across the narrow
-contours. The baseline stall is a consequence of the line-search resolution
-and our stated final-candidate rule, not a general property of steepest
-descent.
+As a separate direction-scaling case, use
+$\bm p=-\bm g/\|\bm g\|_2$ with the same $[0,1]$ interval, width and cap.
+Here $\alpha$ has units of metres. This removes the huge scale of the raw
+gradient direction and produces a useful path, but at iteration 200 the
+run is still above tolerance, with $\|\bm g\|_2\approx18.57$ N. It is
+reported as capped, not converged. The finer, extended runs are parameter
+sensitivity cases and are not substituted for the prescribed baseline.
 
 \paragraph{Newton, part (e).}
 Solving $H\bm p=-\bm g$ gives
@@ -147,63 +90,44 @@ p_1=\frac{5205.365577}{34548.8846}=0.1506666752\ \mathrm m,
 \qquad
 p_2=\frac{-4827.238289}{982723.8289}=-0.0049121006\ \mathrm m.
 \]
-For $\bm x(\alpha)=\bm x^{(0)}+\alpha\bm p$, the trial energies at
-$\alpha=0.25,0.5,0.75$ are $-870.891947$, $-997.139916$ and
-$-1072.888698$ J. Retain $[0.5,1]$, then $[0.75,1]$ in the next round.
-After 14 halvings the interval is $[1-2^{-14},1]$. Its left endpoint,
-midpoint and right endpoint have energies approximately
-$-1098.138290216$, $-1098.138291344$ and $-1098.138291721$ J.
-The endpoint comparison selects $\alpha=1$, yielding
-\[
-\bm x^{(1)}
-=\begin{bmatrix}0.1\\0.01\end{bmatrix}
-+\begin{bmatrix}0.1506666752\\-0.0049121006\end{bmatrix}
-=\begin{bmatrix}0.2506666752\\0.0050878994\end{bmatrix}\ \mathrm m.
-\]
-Recomputing the numerical gradient confirms convergence under the adopted
-gradient-norm test. Displayed values are rounded, while the code retains
-full precision.
+The direct interval search returns $\alpha=1-2^{-15}$. After the first
+update, the next Newton direction has norm $4.60\times10^{-6}$ m, below
+the lecture step tolerance. The point is $(0.2506620773,0.0050880493)$ m
+and the residual gradient is $0.21665$ N.
 
 \clearpage
 \subsection{Worked Marquardt update and displacement paths}
 \paragraph{Marquardt, part (f).}
-At $\lambda_0=1000$ N/m, solve
-\[
-\begin{bmatrix}35548.8846&0\\0&983723.8289\end{bmatrix}\bm p
-=\begin{bmatrix}5205.365577\\-4827.238289\end{bmatrix}.
-\]
-This gives $\bm p=(0.1464283798,-0.0049071072)^T$ m. The unit trial is
-\[
-\bm x_{\rm trial}=(0.2464283798,0.0050928928)^T\ \mathrm m,
-\qquad f_{\rm trial}=-1097.827976\ \mathrm J.
-\]
-Since the energy decreases, accept the trial and reduce $\lambda$ from
-1000 to 100 N/m under the adopted factor-of-ten rule. Recompute the stencil
-at the accepted point. The next damping values used for successful trials
-are 100, 10 and 1 N/m.
+At $\lambda_0=1000$ N/m, the first trial is
+$\bm x=(0.24642838,\,0.00509289)^T$ m. Its directly evaluated energy
+is $-1097.827976$ J, below the starting value. Accept it and set
+$\lambda=500$ N/m. On each rejection retain the current point and double
+$\lambda$; on each acceptance halve it. With this lecture-note rule and
+direct objective comparisons, the run reaches the gradient tolerance after
+eight trials, with five accepted updates. Three trials near the solution
+are rejected when the directly evaluated energy fails the strict decrease test.
 \begin{table}[H]
 \centering
-\caption{Accepted Marquardt iterates with the adopted damping update.}
+\caption{Selected direct-evaluation Marquardt iterates.}
 \begin{tabular}{rrrr}
 \toprule
 $k$&$x_1$ (m)&$x_2$ (m)&$\|\bm g\|_2$ (N)\\
 \midrule
 0&0.1000000000&0.0100000000&$7099.159$\\
 1&0.2464283798&0.0050928928&$146.511$\\
-2&0.2506544431&0.0050878999&$0.422607$\\
-3&0.2506666717&0.0050878994&$1.223\times10^{-4}$\\
-4&0.2506666752&0.0050878994&$3.54\times10^{-9}$\\
+2&0.2506062126&0.0050879020&$2.089$\\
+3&0.2506662409&0.0050878994&$1.501\times10^{-2}$\\
+4&0.2506666737&0.0050878994&$5.410\times10^{-5}$\\
+8&0.2506666752&0.0050878994&$7.718\times10^{-7}$\\
 \bottomrule
 \end{tabular}
 \end{table}
-The third update leaves a gradient above $10^{-5}$ N. The fourth satisfies
-the stopping criterion.
 \begin{figure}[H]
 \centering
 \includegraphics[width=.85\textwidth]{baseline_detail.pdf}
-\caption{Magnified baseline displacement paths for parts (d)--(f). Newton
-reaches the minimum in one update, while Marquardt approaches it in four.
-The stalled steepest-descent baseline coincides with the starting point.
+\caption{Magnified baseline displacement paths for parts (d)--(f). Newton meets the lecture step test after one update, while Marquardt meets
+the gradient test after eight trials. The normalized
+steepest-descent path is shown here; the unnormalized direct run diverges.
 The full-window paths appear in the baseline comparison.}
 \end{figure}
 For part (c), the analytical point is marked on the full contour plot and

@@ -5,7 +5,7 @@
 \hypersetup{pageanchor=false}
 \begin{titlepage}
   \thispagestyle{empty}
-  \begin{flushright}{\large 11 November 2026\par}\end{flushright}
+  \begin{flushright}{\large 25 November 2026\par}\end{flushright}
   \vspace*{0.5cm}
   \begin{center}
     \includegraphics[width=0.42\textwidth]{metu_logo.jpg}\par
@@ -89,9 +89,9 @@ $q_1=8660.2540$ N and $q_2=5000$ N.
 Figure~\ref{fig:design} shows contours on the prescribed window.
 In the magnified view, read the left and right extrema of the innermost
 contour at about $0.248$ and $0.253$ m and the bottom and top extrema
-at about $0.0046$ and $0.0056$ m. The midpoint of each pair estimates the
-center. To the precision supported by the plot, this gives
-$(0.251,0.0051)$ m, with reading precision of roughly $0.001$ m
+at about $0.0046$ and $0.0056$ m. Their midpoints estimate the center as
+$(0.2505,0.0051)$ m. Rounded to the plot's horizontal reading precision this
+is $(0.251,0.0051)$ m, with precision of roughly $0.001$ m
 horizontally and $0.0001$ m vertically. The ratio $b/a=28.44$ makes the contours narrower in the vertical
 displacement direction in physical coordinates.
 \begin{figure}[H]
@@ -162,232 +162,43 @@ the central stencils are
  g_i=\frac{D_i^+-D_i^-}{2\delta_i},\qquad
  H_{ii}=\frac{D_i^++D_i^-}{\delta_i^2}.
 \]
-The four-point mixed stencil cancels identically because the quadratic is
-separable. The implementations compute $D_i^{\pm}$ directly from the
-quadratic increment to preserve precision near equilibrium. When a coordinate
+The main runs evaluate $f$ at each stencil point and compute the mixed
+entry from the four corner values. The mixed entry is zero in exact arithmetic. When a coordinate
 is exactly zero, its relative stencil vanishes. In that case a 1 m reference
 scale supplies the nonzero perturbation $\delta_i=0.01$ m at the baseline
 stencil factor. At the initial
 point, $\bm g=(-5205.37,\,4827.24)^T$ N.
 
-\paragraph{Steepest descent (d).} Set $\bm p=-\bm g$ and update
-$\bm x\leftarrow\bm x+\alpha\bm p$. With the baseline interval width,
-the final candidate comparison selects $\alpha=0$ on the first iteration.
-The starting point is therefore reported as stalled. After 14 halvings,
-the final interval is $[0,2^{-14}]$. Its smallest positive candidate
-is $2^{-15}\approx3.05\times10^{-5}$, larger than twice the line minimum,
-so zero gives a lower energy than either positive candidate. The extended
-run retains the gradient tolerance, uses width $10^{-13}$ and allows 400
-updates. It converges at update 290 to $(0.2506666750,0.0050878994)$ m
-with residual $8.81\times10^{-6}$ N.
+\paragraph{Steepest descent (d).} The lecture notes specify
+$\bm p=-\bm g$. The literal direct-evaluation run uses the final interval
+midpoint and the handout's $[0,1]$, $10^{-4}$ and $M=200$ settings. It returns
+an uphill step at its first search and eventually diverges at iteration 103.
+A normalized direction is reported separately; at the cap of 200 its
+$\|\bm g\|_2$ is $18.57$ N, so it has not met the $10^{-5}$ tolerance.
 
 \paragraph{Newton's method (e).} Solve $H\bm p=-\bm g$ and use the same
 line search. The Newton direction is approximately $(0.1506666752,-0.0049121006)^T$
-m at the start. The interval search selects the endpoint $\alpha=1$ and
-the method reaches the minimum in one step.
+m at the start. The interval search returns $\alpha=1-2^{-15}$. After that update,
+the next direction meets the lecture step tolerance.
 
 \paragraph{Marquardt's method (f).} Solve $(H+\lambda I)\bm p=-\bm g$.
-Accept a unit step when its energy decreases, then divide $\lambda$ by ten.
-On rejection keep the current point and multiply $\lambda$ by ten. This
-update rule is adopted here because the handout specifies only the initial
-damping. The first trial point is approximately $(0.24643,0.005093)$ m.
+Use a unit trial step and compare directly evaluated objective values.
+The lecture notes specify halving $\lambda$ after an accepted step and
+doubling it after a rejected step. The assignment sets $\lambda_0=10^3$.
+The first trial point is approximately $(0.24643,0.005093)$ m.
 
-\paragraph{Interval halving.} Start from $[0,1]$ and compare the midpoint
-and two quarter points. Keep the half interval around the lowest candidate,
-then compare the two endpoints and midpoint of the final interval.
-For $f(\bm x+\alpha\bm p)=f(\bm x)+L\alpha+Q\alpha^2$, the comparisons
-use distance to $-L/(2Q)$, which orders the trial energies without cancellation.
-The first steepest-descent line minimum is $\alpha\approx2.11\times10^{-6}$.
+\paragraph{Interval halving.} Start from $[0,1]$, compare the midpoint and
+two quarter points using direct evaluations of $f$, and retain the half
+containing the lowest sampled value. Stop when the interval is narrower than
+$10^{-4}$ and return its midpoint. The first steepest-descent line minimum
+is $\alpha\approx2.11\times10^{-6}$.
 
-\paragraph{Stopping test.} Use $\|\bm g\|_2\le10^{-5}$ N and an iteration
-cap of 200 in the baseline runs. The extended and zero-start steepest-descent
-runs allow 400 iterations, and the loose-tolerance run uses $10^{-2}$ N.
-An interval search that returns zero above the gradient tolerance
-is classified as stalled. The plot boundaries define the graphical view.
-The optimization steps may leave that window.
-
-\input{report/numerical_worked.tex}
-
-\clearpage
-\section{Convergence and parameter sensitivity}
-\subsection{Baseline comparison (part g)}
-All methods start at $(0.1,0.01)$ m. The line-search width is $10^{-4}$ for
-steepest descent and Newton, and the initial damping is $10^3$ N/m for
-Marquardt. Figure~\ref{fig:base} shows the three paths.
-\begin{figure}[H]
-\centering
-\includegraphics[width=.95\textwidth]{baseline.pdf}
-\caption{Baseline iterates on the prescribed design space. The steepest-descent path consists of the initial point.}
-\label{fig:base}
-\end{figure}
-
-\begin{table}[H]
-\centering
-\caption{Convergence with stabilized arithmetic for the baseline and selected sensitivity runs.}
-\label{tab:convergence}
-\begin{tabular}{llrrrr}
-\toprule
-Method & Setting & Updates & Trials$^\dagger$ & $\|\bm g\|_2$ (N) & Status\\
-\midrule
-Steepest descent & Baseline & 0 & 49 & $7.10\times10^3$ & Stalled\\
-Newton & Baseline & 1 & 63 & $<10^{-8}$ & Converged\\
-Marquardt & Baseline & 4 & 49 & $<10^{-8}$ & Converged\\
-\midrule
-Steepest descent & Width $10^{-13}$ & 200 & 27804 & $5.12\times10^{-3}$ & Cap\\
-Steepest descent & Extended & 290 & 40314 & $8.81\times10^{-6}$ & Converged\\
-Newton & Width $10^{-13}$ & 1 & 153 & $<10^{-8}$ & Converged\\
-Marquardt & $\lambda_0=10^5$ & 6 & 69 & $<10^{-8}$ & Converged\\
-\bottomrule
-\end{tabular}
-\end{table}
-\noindent{\small $^\dagger$Estimated objective-sample counts use four central-difference
-samples per steepest-descent update and nine for the full Hessian stencil,
-three trial samples per interval-halving round plus three final candidates,
-and one trial per Marquardt update. The derivative increments and line-search
-comparisons are simplified analytically in the implementation. These counts
-are a transparent work estimate, not measured runtime or an exact count of
-all arithmetic operations.}
-
-By update count, Newton is fastest at one update and Marquardt follows at four.
-The steepest-descent baseline makes no update because its line search selects
-zero; it must be reported as stalled rather than as a converged fast run.
-For a broader efficiency comparison, the estimated sample count favors
-Marquardt over Newton in this implementation, 49 versus 63. This does not
-make Marquardt universally more efficient: both counts depend on the declared
-stencil and search conventions, and the Hessian here is especially cheap to
-solve because it is diagonal. The extended steepest-descent run changes both
-the line-search width and iteration cap, so it illustrates attainable
-convergence rather than isolating one parameter effect.
-
-\clearpage
-\subsection{Sensitivity runs and verification (part h)}
-The first three rows in the convergence table are one-setting comparisons
-against their named baseline: the line-search width is tightened for steepest descent and Newton,
-and only $\lambda_0$ changes in the Marquardt run. All other settings carry
-over. With the tighter search, steepest descent reaches
-$(0.2506665666,0.0050879030)$ m at iteration 200, about $1.09\times10^{-7}$ m
-from the solution. The gradient remains above the stopping threshold. Newton
-still needs one update, with more interval comparisons. Larger initial
-Marquardt damping makes the first update smaller and raises the iteration
-count from four to six.
-
-\paragraph{Steepest-descent rate.} The Hessian condition number is
-$\kappa=b/a=28.44$. For a positive-definite quadratic with exact line
-minimization, the worst-case per-step contraction in the Hessian norm
-$\|e\|_H=(e^THe)^{1/2}$, where $e=x-x^*$, is
-$(\kappa-1)/(\kappa+1)=0.9321$. For the stabilized extended run the
-geometric mean contraction from iterations 100 to 290 is
-$(\|e_{290}\|_H/\|e_{100}\|_H)^{1/190}=0.9317$.
-\begin{figure}[H]
-\centering
-\includegraphics[width=.86\textwidth]{sensitivity.pdf}
-\caption{Sensitivity iterates in the assigned plotting window.}
-\end{figure}
-\begin{figure}[H]
-\centering
-\includegraphics[width=.86\textwidth]{detail.pdf}
-\caption{Detail of the same paths, including negative $x_2$ values visited by steepest descent.}
-\end{figure}
-
-\clearpage
-\subsection{Additional sensitivity runs}
-\begin{table}[H]
-\centering
-\caption{One-setting changes from the named reference run.}
-\begin{tabular}{llrr}
-\toprule
-Reference run & Setting changed & Updates & Final gradient (N)\\
-\midrule
-SD tighter & Cap 400 & 290 & $8.81\times10^{-6}$\\
-SD extended & Start $(0,0.01)$ m & 220 & $8.65\times10^{-6}$\\
-Newton baseline & Stencil factor $10^{-4}$ & 1 & $1.42\times10^{-8}$\\
-Marquardt baseline & Damping factor 2 & 5 & $9.77\times10^{-8}$\\
-SD tighter & Gradient tolerance $10^{-2}$ N & 192 & $9.01\times10^{-3}$\\
-\bottomrule
-\end{tabular}
-\end{table}
-The changed starting point changes the mixture of directional errors and
-the subsequent steepest-descent path. A looser gradient tolerance saves
-updates at the expense of equilibrium accuracy. Central differences are
-exact for this quadratic in exact arithmetic, so the smaller stencil changes
-the Newton residual through rounding. The factor of two decreases damping
-more slowly after acceptance, adding one update in the stabilized run.
-
-\paragraph{Newton line-search check.} Python held the derivative stencil
-fixed and varied the energy comparison and final candidate policy separately.
-Both raw objective values and stabilized comparisons gave one update with
-the best of the final endpoints and midpoint. Returning the midpoint gave
-two updates with stabilized comparisons and seven with raw values. Thus both
-the endpoint policy and rounding can affect the trace near equilibrium.
-
-\paragraph{Direct objective evaluation.} Additional Python runs compute the
-central differences from raw objective values, including the four-point
-mixed stencil, and compare raw objective values in the line search or
-Marquardt acceptance test. The stalled steepest-descent baseline persists.
-Table~\ref{tab:arithmetic} shows that the iteration counts can change when
-rounding affects the order of nearby trial energies. In particular, the
-direct Marquardt run with a factor of two rejects three trials whose computed
-energies fail the strict decrease test. The direct counts also depend on
-the evaluation order of the floating-point expression for $f$.
-
-\begin{table}[H]
-\centering
-\caption{Iterations with stabilized and direct objective arithmetic in Python.
-Marquardt counts include rejected trials.}
-\label{tab:arithmetic}
-\begin{tabular}{lrr}
-\toprule
-Case & Stabilized & Direct\\
-\midrule
-Steepest descent, extended & 290 & 275\\
-Newton, best final candidate & 1 & 1\\
-Newton, final midpoint & 2 & 6\\
-Marquardt, damping factor 2 & 5 & 8\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\clearpage
-\subsection{Discussion and method selection}
-\paragraph{Steepest descent.}
-With the suggested line-search width of $10^{-4}$, the final candidate
-comparison selects a zero step even though the starting gradient norm
-is about $7{,}099$ N. Tightening the search allows progress, but the
-unequal curvatures produce a zigzag path. The tighter run is within
-$1.09\times10^{-7}$ m of the analytical solution after 200 iterations,
-with a gradient norm still above tolerance. Allowing more iterations
-gives convergence at iteration 290 with stabilized arithmetic and 275
-with direct objective evaluation.
-
-\paragraph{Newton's method.}
-The energy is quadratic and the Hessian is constant and positive definite.
-Since $\bm g=H(\bm x-\bm x^*)$, the Newton direction points directly
-from the current iterate to the minimum. The baseline line search
-accepts the full step, giving convergence in one iteration with either
-arithmetic implementation. Tightening the search adds comparisons
-while leaving the iteration count at one.
-
-\paragraph{Marquardt's method.}
-Adding $\lambda I$ to the Hessian reduces the step, particularly along
-the softer horizontal direction. The baseline takes four accepted
-steps and reaches the same minimum. Increasing the initial damping
-from $10^3$ to $10^5$ N/m reduces the first step and raises the count to
-six. Under the equivalent-sample convention in Table~\ref{tab:convergence}, the baseline
-uses 49 samples versus Newton's 63 because it avoids interval halving.
-
-\paragraph{Method selected.}
-Newton's method is preferred for this truss. It reaches the analytical
-minimum in the fewest iterations, and the diagonal Hessian makes the
-direction calculation inexpensive. Marquardt uses fewer equivalent
-samples under the chosen accounting convention. Those counts describe
-the stencil and search work, so the recommendation rests on Newton's
-one-step convergence and inexpensive Hessian solve.
-
-\clearpage
-\subsection{Iteration checkpoints and settings}
-\input{report/checkpoints.tex}
-The full per-iteration results, including each trial step and gradient,
-are available in the CSV and workbook.
+\paragraph{Stopping tests.} Steepest descent and Marquardt use the
+$10^{-5}$ gradient-norm tolerance and the assignment's 200-update limit.
+Newton uses the lecture-note step-length and relative-design-change tests;
+its reported termination is therefore identified separately from the
+gradient-norm test used by the other methods. Extended and tighter-search cases are sensitivity analyses,
+not the assigned baseline. Numerical trials may leave the contour window.
 
 \clearpage
 \subsection{Parameter list and sensitivity settings}
@@ -426,17 +237,206 @@ Parameter & Baseline & Overrides\\
 \midrule
 Starting displacements (m) & $(0.1,0.01)$ & $(0,0.01)$\\
 Maximum updates & 200 & 400\\
-Gradient tolerance (N) & $10^{-5}$ & $10^{-2}$\\
+SD and Marquardt gradient tolerance (N) & $10^{-5}$ & $10^{-2}$\\
+Newton step (m) and relative tolerance & $10^{-5}$ &\\
 Relative stencil factor & $0.01$ & $10^{-4}$\\
 Line-search interval & $[0,1]$ & \\
-Line-search width & $10^{-4}$ & $10^{-13}$\\
+Line-search width & $10^{-4}$ & $10^{-8}$, $10^{-13}$\\
 Initial damping (N/m) & $10^3$ & $10^5$\\
-Damping multiplier & 10 & 2\\
+Damping update & halve/double & factor 10\\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \clearpage
+
+\input{report/numerical_worked.tex}
+
+\clearpage
+\section{Convergence and parameter sensitivity}
+\subsection{Baseline comparison (part g)}
+The headline results below use direct objective evaluations, the final
+interval midpoint, the stated $[0,1]$ search range, and the lecture-note
+Marquardt update. The normalized steepest-descent result is shown separately
+because normalizing the direction changes the scale of $\alpha$.
+\begin{figure}[H]
+\centering
+\includegraphics[width=.95\textwidth]{baseline.pdf}
+\caption{Direct-procedure iteration paths. The normalized steepest-descent
+path is shown with the visible portion of the first unscaled update.}
+\label{fig:base}
+\end{figure}
+\begin{table}[H]
+\centering
+\caption{Main results from direct objective evaluations.}
+\label{tab:convergence}
+\small
+\begin{tabular}{lrrrrl}
+\toprule
+Method & Trials & $x_1$ (m) & $x_2$ (m) & $f$ (J) & Termination\\
+\midrule
+SD, raw $-\bm g$ & 103 & -- & -- & Nonfinite & Diverged\\
+SD, normalized & 200 & 0.250666675 & 0.005106797 & $-1098.138116$ & Cap\\
+Newton & 1 & 0.250662077 & 0.005088049 & $-1098.138291$ & Step test\\
+Marquardt & 8 & 0.250666675 & 0.005087899 & $-1098.138292$ & Gradient test\\
+\bottomrule
+\end{tabular}
+\end{table}
+The unnormalized steepest-descent result is not a solution: the returned
+midpoint repeatedly produces uphill steps and eventually overflow. The
+normalized direction approaches the analytical minimum and reaches the cap
+with a residual of $18.57$ N.
+Newton meets its step criterion. Marquardt meets its gradient criterion after five accepted steps and three rejected trials. Objective-sample
+counts are omitted from the headline comparison because their totals depend
+on counting conventions and Marquardt does not use an interval line search.
+
+\clearpage
+\subsection{Parameter sensitivity (part h)}
+Each row changes one setting from the corresponding direct baseline.
+The normalized direction comparison is reported in Table~\ref{tab:convergence}.
+\begin{table}[H]
+\centering
+\caption{Direct procedure with one parameter changed.}
+\begin{tabular}{llrrl}
+\toprule
+Method & Change & Trials & $\|\bm g\|$ (N) & Outcome\\
+\midrule
+Steepest descent & Width $10^{-13}$ & 200 & $5.17\times10^{-3}$ & Cap\\
+Newton & Width $10^{-8}$ & 1 & $1.32\times10^{-4}$ & Step test\\
+Marquardt & $\lambda_0=10^5$ N/m & 10 & $1.95\times10^{-7}$ & Gradient test\\
+Marquardt & Damping factor 10 & 4 & $3.54\times10^{-9}$ & Gradient test\\
+\bottomrule
+\end{tabular}
+\end{table}
+The finer search lets unscaled steepest descent make useful progress but
+it reaches the 200-update cap above its gradient tolerance. Newton still
+takes one update, with a smaller final residual and more interval halvings.
+The larger initial Marquardt damping shortens the first step and takes
+ten trials. A factor of ten reaches the tolerance in four trials for
+this objective. The course baseline uses the factor of two.
+
+\subsection{Discussion and method selection}
+\paragraph{Steepest descent.}
+The literal unnormalized direction with final-midpoint IHM does not produce
+a usable result: its coarse step scale leads to uphill steps and overflow.
+Normalizing $-\bm g$ yields a meaningful path, but at 200 updates its
+residual gradient remains $18.57$ N. The finer, extended runs in the
+sensitivity appendix show that this quadratic's unequal curvatures also
+make steepest descent converge slowly.
+
+\paragraph{Newton's method.}
+The objective is quadratic and its Hessian is constant and positive definite.
+The direct midpoint implementation meets the lecture step-size test after one update. Its gradient remains $0.21665$ N, so this is not convergence under a gradient-norm test. The stabilized
+appendix reaches the minimum in one update because it avoids loss of
+precision in nearby objective comparisons. The literal result is the
+appropriate main comparison when following the stated numerical procedure.
+
+\paragraph{Marquardt's method.}
+With the lecture's halve/double damping update, the direct implementation
+converges in eight trials, including three rejections near the minimum.
+The damping reduces the step initially and then allows Newton-like progress.
+
+\paragraph{Method selected.}
+Newton is preferred when the lecture step tolerance is the goal. For a
+$10^{-5}$ N gradient target, the direct Newton diagnostic takes six updates
+and Marquardt takes five accepted steps in eight trials. Both reach the
+neighborhood of the analytical minimum. Their iteration counts alone do
+not establish a runtime ranking.
+
+\clearpage\section{Appendix A: Stabilized verification runs}\label{app:stable}
+The following results are an algebraically stabilized cross-check. They are not the literal numerical-method results used in parts (d)--(g).
+\paragraph{Newton line-search check.} Python held the derivative stencil
+fixed and varied the energy comparison and final candidate policy separately.
+Both raw objective values and stabilized comparisons gave one update with
+the best of the final endpoints and midpoint. Returning the midpoint gave
+two updates with stabilized comparisons and seven with raw values. Thus both
+the endpoint policy and rounding can affect the trace near equilibrium.
+
+\paragraph{Direct objective evaluation.} Additional Python runs compute the
+central differences from raw objective values, including the four-point
+mixed stencil, and compare raw objective values in the line search or
+Marquardt acceptance test. The literal baseline result is reported in part (d); these are separate stabilized checks.
+Table~\ref{tab:arithmetic} records the sensitivity of the stabilized reference
+results to direct floating-point evaluation and candidate policy. In particular, the
+direct Marquardt run with a factor of two rejects three trials whose computed
+energies fail the strict decrease test. The direct counts also depend on
+the evaluation order of the floating-point expression for $f$.
+
+\begin{table}[H]
+\centering
+\caption{Iterations with stabilized and direct objective arithmetic in Python.
+Marquardt counts include rejected trials.}
+\label{tab:arithmetic}
+\begin{tabular}{lrr}
+\toprule
+Case & Stabilized & Direct\\
+\midrule
+Steepest descent, extended & 290 & 275\\
+Newton, best final candidate & 1 & 1\\
+Newton, final midpoint & 2 & 6\\
+Marquardt, damping factor 2 & 5 & 8\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\subsection{Stabilized sensitivity comparisons}
+The following runs use stabilized arithmetic and the best final candidate. With the tighter search, steepest descent reaches
+$(0.2506665666,0.0050879030)$ m at iteration 200, about $1.09\times10^{-7}$ m
+from the solution. The gradient remains above the stopping threshold. Newton
+still needs one update, with more interval comparisons. Larger initial
+Marquardt damping makes the first update smaller and raises the iteration
+count from four to six.
+
+\paragraph{Steepest-descent rate.} The Hessian condition number is
+$\kappa=b/a=28.44$. For a positive-definite quadratic with exact line
+minimization, the worst-case per-step contraction in the Hessian norm
+$\|e\|_H=(e^THe)^{1/2}$, where $e=x-x^*$, is
+$(\kappa-1)/(\kappa+1)=0.9321$. For the stabilized extended run the
+geometric mean contraction from iterations 100 to 290 is
+$(\|e_{290}\|_H/\|e_{100}\|_H)^{1/190}=0.9317$.
+\begin{figure}[H]
+\centering
+\includegraphics[width=.86\textwidth]{sensitivity.pdf}
+\caption{Sensitivity iterates in the assigned plotting window.}
+\end{figure}
+\begin{figure}[H]
+\centering
+\includegraphics[width=.86\textwidth]{detail.pdf}
+\caption{Detail of the same paths, including negative $x_2$ values visited by steepest descent.}
+\end{figure}
+
+\clearpage
+\subsection{Additional sensitivity runs}
+\begin{table}[H]
+\centering
+\caption{One-setting changes from the named reference run.}
+\begin{tabular}{llrr}
+\toprule
+Reference run & Setting changed & Updates & Final gradient (N)\\
+\midrule
+SD tighter & Cap 400 & 290 & $8.81\times10^{-6}$\\
+SD extended & Start $(0,0.01)$ m & 220 & $8.65\times10^{-6}$\\
+Newton baseline & Stencil factor $10^{-4}$ & 1 & $1.42\times10^{-8}$\\
+Marquardt stabilized reference & Damping factor 2 & 5 & $9.77\times10^{-8}$\\
+SD tighter & Gradient tolerance $10^{-2}$ N & 192 & $9.01\times10^{-3}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+The changed starting point changes the mixture of directional errors and
+the subsequent steepest-descent path. A looser gradient tolerance saves
+updates at the expense of equilibrium accuracy. Central differences are
+exact for this quadratic in exact arithmetic, so the smaller stencil changes
+the Newton residual through rounding. The factor of two decreases damping
+more slowly after acceptance, adding one update in the stabilized run.
+
+\subsection{Stabilized iteration checkpoints}
+\input{report/checkpoints.tex}
+The full per-iteration results, including each trial step and gradient,
+are available in the CSV and workbook.
+
+
 \section{Calculation files and reproducibility}
 The handout for CE587 Homework 2, Fall 2026--2027 supplies the geometry,
 load, material properties, baseline numerical parameters and plotting window.

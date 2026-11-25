@@ -81,6 +81,26 @@ class HomeworkChecks(unittest.TestCase):
         self.assertEqual(extended[-1]["status"], "converged")
         self.assertLessEqual(extended[-1]["gradient"], 1e-5)
 
+    def test_literal_midpoint_runs_and_divergence_status(self):
+        sd = solve("SD", 1e-4, 1000, comparison="raw", selection="midpoint",
+                   stencil="raw")
+        self.assertEqual((sd[-1]["k"], sd[-1]["status"]), (103, "diverged"))
+        self.assertFalse(math.isfinite(sd[-1]["gradient"]))
+        normalized = solve("SD", 1e-4, 1000, comparison="raw",
+                           selection="midpoint", stencil="raw", normalize_sd=True)
+        self.assertEqual((normalized[-1]["k"], normalized[-1]["status"]),
+                         (200, "cap"))
+        self.assertAlmostEqual(normalized[-1]["gradient"], 18.5706469, places=5)
+        newton = solve("Newton", 1e-4, 1000, comparison="raw",
+                       selection="midpoint", stencil="raw", newton_step_test=True)
+        self.assertEqual((newton[-1]["k"], newton[-1]["status"]),
+                         (1, "converged_step"))
+        self.assertLess(newton[-1]["gradient"], 1.)
+        marquardt = solve("Marquardt", 1e-4, 1000, factor=2,
+                          comparison="raw", selection="midpoint", stencil="raw")
+        self.assertEqual((marquardt[-1]["k"], marquardt[-1]["status"]),
+                         (8, "converged"))
+
     @unittest.skipUnless(find_spec("matplotlib"), "Matplotlib required")
     def test_generate_from_clean_directory(self):
         with tempfile.TemporaryDirectory() as temporary:

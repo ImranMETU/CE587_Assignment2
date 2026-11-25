@@ -1,6 +1,8 @@
 \subsection{Python and Excel cross-check}
-The saved workbook and Python trace agree on all 931 recorded
-states across eleven runs, including the starting and terminal states.
+The saved workbook and Python stabilized trace agree on all 931 recorded
+states across eleven verification runs. This is a consistency check between
+implementations that use the same stabilized formulas, not independent
+validation of the literal direct-evaluation runs in the main report.
 The comparison covers the two coordinates, energy, gradient norm, trial
 step, damping, sample count and termination status. The maximum observed
 coordinate difference is below $10^{-9}$ m, the maximum energy difference
