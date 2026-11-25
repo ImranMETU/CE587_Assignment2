@@ -1,0 +1,12 @@
+\subsection{Python and Excel cross-check}
+The saved workbook and Python trace agree on all 931 recorded
+states across eleven runs, including the starting and terminal states.
+The comparison covers the two coordinates, energy, gradient norm, trial
+step, damping, sample count and termination status. The maximum observed
+coordinate difference is below $10^{-9}$ m, the maximum energy difference
+is below $10^{-6}$ J, and the maximum gradient-norm difference is below
+$10^{-9}$ N. The workbook and Python use the same stabilized arithmetic,
+so this checks agreement between implementations. The closed-form minimum
+and the direct objective runs provide separate checks on the result.
+The verifier \texttt{verify\_workbook.py} reads the saved Excel values and
+produces \texttt{excel\_python\_check.csv}.

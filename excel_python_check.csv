@@ -1,0 +1,12 @@
+case,matched_rows,max_coordinate_difference_m,max_energy_difference_J,max_gradient_norm_difference_N
+SD baseline,1,0.0,0.0,0.0
+Newton baseline,2,0.0,0.0,0.0
+Marquardt baseline,5,0.0,0.0,0.0
+SD tighter,201,0.0,4.547473508864641e-13,9.094947017729282e-13
+Newton tighter,2,0.0,0.0,0.0
+Marquardt larger,7,0.0,2.2737367544323206e-13,4.547473508864641e-13
+SD extended,291,0.0,4.547473508864641e-13,9.094947017729282e-13
+SD zero start,221,0.0,2.2737367544323206e-13,1.8189894035458565e-12
+Newton small stencil,2,0.0,0.0,0.0
+Marquardt factor 2,6,0.0,2.2737367544323206e-13,0.0
+SD loose gradient,193,0.0,4.547473508864641e-13,9.094947017729282e-13

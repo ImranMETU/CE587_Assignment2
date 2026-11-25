@@ -1,0 +1,6 @@
+__pycache__/
+_review/
+*.aux
+*.log
+*.out
+CE587_HW2_Submission*.zip
