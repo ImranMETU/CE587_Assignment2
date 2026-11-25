@@ -84,8 +84,8 @@ run is still above tolerance, with $\|\bm g\|_2\approx18.57$ N. It is
 reported as capped. Keeping the raw direction and midpoint return,
 reducing the width to $10^{-13}$, and raising the cap to 400 gives
 $(0.2506666752,0.0050878994)$ m after 367 updates, with a gradient norm
-of $1.67\times10^{-6}$ N. This sensitivity run gives a converged
-solution for comparison with the prescribed baseline.
+of $1.67\times10^{-6}$ N. Python meets the gradient target in this sensitivity run. The worksheet
+reaches the cap because the narrower search compares nearly equal energies.
 
 \paragraph{Newton, part (e).}
 At the initial point, $H_{11}>0$ and
@@ -112,7 +112,7 @@ $\bm x=(0.24642838,\,0.00509289)^T$ m. Its directly evaluated energy
 is $-1097.827976$ J, below the starting value. Accept it and set
 $\lambda=500$ N/m. On each rejection retain the current point and double
 $\lambda$; on each acceptance halve it. With this lecture-note rule and
-direct objective comparisons, the run reaches the gradient tolerance after
+direct objective comparisons, Python reaches the gradient tolerance after
 eight trials, with five accepted updates. Three trials near the solution
 are rejected when the directly evaluated energy fails the strict decrease test.
 \begin{table}[H]
@@ -134,8 +134,8 @@ $k$&$x_1$ (m)&$x_2$ (m)&$\|\bm g\|_2$ (N)\\
 \begin{figure}[H]
 \centering
 \includegraphics[width=.85\textwidth]{baseline_detail.pdf}
-\caption{Magnified baseline displacement paths for parts (d)--(f). Newton meets the lecture step test after one update, while Marquardt meets
-the gradient test after eight trials. The normalized
+\caption{Magnified baseline displacement paths for parts (d)--(f). Newton meets the lecture step test after one update, while the Python Marquardt run meets
+the gradient test after eight trials, with sensitivity to energy rounding. The normalized
 steepest-descent path is shown here; the unnormalized direct run diverges.
 The full-window paths appear in the baseline comparison.}
 \end{figure}

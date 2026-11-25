@@ -268,7 +268,7 @@ path is shown with the visible portion of the first unscaled update.}
 \end{figure}
 \begin{table}[H]
 \centering
-\caption{Main results from direct objective evaluations.}
+\caption{Analytical reference and direct Python results.}
 \label{tab:convergence}
 \small
 \begin{tabular}{lrrrrl}
@@ -278,20 +278,25 @@ Run & Updates/trials & $f$ calls & $x_1$ (m) & $x_2$ (m) & Outcome\\
 Analytical minimum & -- & -- & 0.250666675 & 0.005087899 & Exact\\
 SD, raw $-\bm g$ & 103 & 4846 & -- & -- & Diverged\\
 SD, normalized & 200 & 9405 & 0.250666675 & 0.005106797 & Cap\\
-SD, finer and extended & 367 & 50284 & 0.250666675 & 0.005087899 & Gradient test\\
+SD, finer and extended & 367 & 50284 & 0.250666675 & 0.005087899 & Gradient test$^\dagger$\\
 Newton, lecture & 1 & 60 & 0.250662077 & 0.005088049 & Step test\\
 Newton, common target & 6 & 315 & 0.250666675 & 0.005087899 & Gradient test\\
-Marquardt & 8 & 89 & 0.250666675 & 0.005087899 & Gradient test\\
+Marquardt & 8 & 89 & 0.250666675 & 0.005087899 & Gradient test$^\dagger$\\
 \bottomrule
-\end{tabular}
+\end{tabular}\par
+\smallskip
+\parbox{.95\textwidth}{\footnotesize $^\dagger$ Rounding affects these Python outcomes.
+The saved worksheet reaches the 400-update cap for extended SD and
+the 200-trial cap for Marquardt.}
 \end{table}
 The unnormalized steepest-descent result is not a solution: the returned
 midpoint repeatedly produces uphill steps and eventually overflow. The
 normalized direction approaches the analytical minimum and reaches the cap
 with a residual of $18.57$ N.
 The analytical minimum energy is $-1098.138292$ J. The counts include the objective and stencil samples at each state,
-the line-search or damping trials, and the terminal check. Marquardt's
-eight trials include three rejections. At the common $10^{-5}$ N target,
+the line-search or damping trials, and the terminal check. Reusing the
+nine objective values at the unchanged point after each of Marquardt's
+three rejections would reduce the Python count from 89 to 62. At the common $10^{-5}$ N target,
 the final gradient norms for extended SD, Newton and Marquardt are
 $1.67\times10^{-6}$, $6.20\times10^{-6}$ and $7.72\times10^{-7}$ N,
 respectively. Extended SD uses a width of $10^{-13}$ and a cap of 400.
@@ -339,8 +344,8 @@ precision in nearby objective comparisons. The literal result is the
 appropriate main comparison when following the stated numerical procedure.
 
 \paragraph{Marquardt's method.}
-With the lecture's halve/double damping update, the direct implementation
-converges in eight trials, including three rejections near the minimum.
+With the lecture's halve/double damping update, Python reaches the gradient
+threshold on trial eight after three rejections near the minimum.
 At the first rejection the quadratic predicts a decrease of about
 $4.24\times10^{-14}$ J, below the $2.27\times10^{-13}$ J spacing of
 floating-point energies there. The strict energy comparison is sensitive
@@ -348,8 +353,8 @@ to rounding at that scale, so the rejection count depends on evaluation order.
 
 \paragraph{Method selected.}
 Newton is preferred when the lecture step tolerance is the goal. For a
-$10^{-5}$ N gradient target, Marquardt used the fewest objective evaluations
-in this experiment, with 89 versus 315 for Newton. The different arithmetic
+$10^{-5}$ N gradient target, Marquardt used 89 objective evaluations versus Newton's 315 in Python.
+The worksheet's Marquardt run did not meet the same target. The different arithmetic
 and linear solve costs limit what these counts say about elapsed time.
 
 \paragraph{Direct worksheet comparison.}
